@@ -17,11 +17,10 @@ CSV_DATASETS = {
 
 def preprocess():
     all_data = []
-
+    cnt_empty_text = 0
     for dataset_name in HF_DATASETS:
         dataset = load_dataset(dataset_name, split='train', cache_dir='cache')
         # dataset = dataset.select(range(1000))
-        cnt_empty_text = 0
         for entry in tqdm(dataset, desc=f"Processing {dataset_name}"):
             text = entry['text']
             if not text:
@@ -29,7 +28,7 @@ def preprocess():
                 continue
             generated = 1 if entry['source'] == 'ai' else 0
             all_data.append({'text': text, 'generated': generated})
-        print(f"Number of empty texts in HF_DATASETS: {cnt_empty_text}")
+    print(f"Number of empty texts in HF_DATASETS: {cnt_empty_text}")
     
     for file_path, (text_column, generated_column) in CSV_DATASETS.items():
         csv_data = pd.read_csv(file_path)
