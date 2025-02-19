@@ -1,2 +1,4 @@
-/data
 *.pyc
+/data/*.csv
+/artem9k
+/cache

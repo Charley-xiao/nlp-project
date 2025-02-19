@@ -12,3 +12,9 @@ https://huggingface.co/datasets/artem9k/ai-text-detection-pile
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 ```
+
+## Preprocessing
+
+```
+python utils/preprocess.py
+```

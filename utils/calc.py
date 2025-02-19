@@ -1,7 +1,6 @@
 """
 Calculate various text features.
 """
-import argparse
 import torch
 import torch.nn.functional as F
 from datasets import load_dataset
@@ -123,6 +122,7 @@ def calc_main(args):
         print("-" * 80)
 
 if __name__ == "__main__":
+    import argparse
     parser = argparse.ArgumentParser(description="Analyze text features to distinguish human vs AI-written text.")
     parser.add_argument('--dataset_name', type=str, required=True, help='Dataset name (e.g., "artem9k/ai-text-detection-pile").')
     parser.add_argument('--split', type=str, default='train', help='Dataset split (default: "train").')
