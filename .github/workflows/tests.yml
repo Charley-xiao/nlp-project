@@ -30,7 +30,7 @@ jobs:
     - name: Unzip data
       run: |
         cd data
-        unzip Training_Essay_Data.zip
+        tar -xzvf Training_Essay_Data.tar.gz
 
     - name: Preprocess data
       run: |
