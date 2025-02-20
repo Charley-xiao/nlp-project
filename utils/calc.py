@@ -153,6 +153,7 @@ if __name__ == "__main__":
     parser.add_argument('--split', type=str, default='train', help='Dataset split (default: "train").')
     parser.add_argument('--model_name', type=str, required=True, help='Pre-trained LLaMA model name (e.g., "meta-llama/Llama-2-7b-hf").')
     parser.add_argument('--text_column', type=str, default='text', help='Column containing the text data (default: "text").')
+    parser.add_argument('--fft_features', type=int, default=10, help='Number of FFT features to extract from entropy values (default: 10).')
 
     args = parser.parse_args()
     calc_main(args)
