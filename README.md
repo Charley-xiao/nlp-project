@@ -53,3 +53,5 @@ python -m spacy download en_core_web_sm
 ```
 python utils/preprocess.py
 ```
+
+![workflow](./assets/workflow.png)
