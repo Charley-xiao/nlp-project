@@ -20,18 +20,39 @@ nltk.download('punkt_tab')
 nltk.download('averaged_perceptron_tagger_eng')
 
 def calculate_token_entropy(text, tokenizer, model):
-    inputs = tokenizer(text, return_tensors="pt")
-    input_ids = inputs["input_ids"].squeeze(0)
+    inputs = tokenizer(text, return_tensors="pt", padding=True)
+    input_ids = inputs['input_ids']
     with torch.no_grad():
-        outputs = model(input_ids=input_ids)
+        outputs = model(**inputs)
         logits = outputs.logits
     probs = F.softmax(logits, dim=-1)
     entropies = []
-    for i in range(len(input_ids)):
-        token_probs = probs[i, input_ids[i]]
-        entropy_value = -torch.sum(token_probs * torch.log(token_probs + 1e-10)).item()
-        entropies.append(entropy_value)
+    for i in range(input_ids.shape[0]):
+        sample_entropy = 0.0
+        for j in range(input_ids.shape[1]):
+            token_id = input_ids[i, j]
+            token_prob = probs[i, j, token_id]
+            sample_entropy += - (token_prob * torch.log(token_prob + 1e-10))
+        entropies.append(sample_entropy.item())
     return entropies
+
+def compute_entropy_fft_features(entropy_values, num_features=10):
+    """
+    Compute FFT on a sequence of per-token entropy values and extract a fixed number of features.
+    Args:
+        entropy_values (list or np.array): The per-token entropy values.
+        num_features (int): The number of FFT coefficients (magnitudes) to extract.
+    Returns:
+        np.array: A feature vector of length `num_features` representing the frequency domain.
+    """
+    entropy_array = np.array(entropy_values)
+    fft_vals = np.fft.fft(entropy_array)
+    fft_magnitudes = np.abs(fft_vals)[:len(fft_vals)//2]
+    if len(fft_magnitudes) < num_features:
+        fft_features = np.pad(fft_magnitudes, (0, num_features - len(fft_magnitudes)), mode='constant')
+    else:
+        fft_features = fft_magnitudes[:num_features]
+    return fft_features
 
 def calculate_perplexity(text, tokenizer, model):
     inputs = tokenizer(text, return_tensors="pt")
@@ -95,8 +116,11 @@ def calc_main(args):
         text = example[args.text_column]
         print(f"Processing text: {text[:100]}...")
 
-        # Calculate features
+        # Calculate per-token entropy and extract FFT features from it
         entropies = calculate_token_entropy(text, tokenizer, model)
+        entropy_fft_features = compute_entropy_fft_features(entropies, num_features=args.fft_features)
+        
+        # Calculate additional features
         perplexity = calculate_perplexity(text, tokenizer, model)
         lexical_diversity = calculate_lexical_diversity(text)
         burstiness = calculate_burstiness(text)
@@ -107,17 +131,18 @@ def calc_main(args):
         syntax_tree_depth = calculate_syntax_tree_depth(text)
         repetitions = check_repetition(text)
 
-        # Print results
-        print(f"Entropy: {np.mean(entropies)}")
-        print(f"Perplexity: {perplexity}")
-        print(f"Lexical Diversity (TTR): {lexical_diversity}")
-        print(f"Burstiness (Variance in Sentence Length): {burstiness}")
-        print(f"Sentiment: {sentiment}")
-        print(f"Flesch-Kincaid Readability: {fk_score}")
-        print(f"Gunning Fog Readability: {gf_score}")
+        # Print (or save) results. For a classifier, you might want to aggregate these into a single feature vector.
+        print(f"Average Entropy: {np.mean(entropies):.4f}")
+        print(f"Entropy FFT Features: {entropy_fft_features}")
+        print(f"Perplexity: {perplexity:.4f}")
+        print(f"Lexical Diversity (TTR): {lexical_diversity:.4f}")
+        print(f"Burstiness (Variance in Sentence Length): {burstiness:.4f}")
+        print(f"Sentiment: {sentiment:.4f}")
+        print(f"Flesch-Kincaid Readability: {fk_score:.4f}")
+        print(f"Gunning Fog Readability: {gf_score:.4f}")
         print(f"POS Tag Distribution: {pos_distribution}")
-        print(f"N-gram Distribution: {ngram_distribution.most_common(5)}")
-        print(f"Average Syntax Tree Depth: {syntax_tree_depth}")
+        print(f"N-gram Distribution (Top 5): {ngram_distribution.most_common(5)}")
+        print(f"Average Syntax Tree Depth: {syntax_tree_depth:.4f}")
         print(f"Repeated Tokens: {repetitions}")
         print("-" * 80)
 
