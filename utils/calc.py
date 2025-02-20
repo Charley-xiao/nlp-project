@@ -113,6 +113,43 @@ def check_repetition(text, threshold=3):
     repeated_tokens = {token: count for token, count in token_counts.items() if count >= threshold}
     return repeated_tokens
 
+def text_to_handcrafted_features(text, tokenizer, model, num_fft_features=10) -> np.array:
+    """
+    Extract a set of handcrafted features from text data.
+    Args:
+        text (str): The input text.
+        tokenizer (transformers.PreTrainedTokenizer): The tokenizer.
+        model (transformers.PreTrainedModel): The language model.
+        num_fft_features (int): The number of FFT features to extract from entropy values.
+    Returns:
+        np.array: A feature vector representing the handcrafted features.
+    """
+    entropies = calculate_token_entropy(text, tokenizer, model)
+    entropy_fft_features = compute_entropy_fft_features(entropies, num_features=num_fft_features)
+    perplexity = calculate_perplexity(text, tokenizer, model)
+    lexical_diversity = calculate_lexical_diversity(text)
+    burstiness = calculate_burstiness(text)
+    sentiment = analyze_sentiment(text)
+    fk_score, gf_score = calculate_readability(text)
+    pos_distribution = calculate_pos_tag_distribution(text)
+    ngram_distribution = calculate_ngram_distribution(text)
+    syntax_tree_depth = calculate_syntax_tree_depth(text)
+    repetitions = check_repetition(text)
+    features = np.array([
+        np.mean(entropies), 
+        perplexity, 
+        lexical_diversity, 
+        burstiness, 
+        sentiment, 
+        fk_score, 
+        gf_score,
+        np.sum(list(pos_distribution.values())), 
+        np.sum(list(ngram_distribution.values())), 
+        syntax_tree_depth,
+        np.sum(list(repetitions.values()))
+    ] + list(entropy_fft_features))
+    return features
+
 def calc_main(args):
     dataset = load_dataset(args.dataset_name, split=args.split)
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
@@ -152,6 +189,8 @@ def calc_main(args):
         print(f"Average Syntax Tree Depth: {syntax_tree_depth:.4f}")
         print(f"Repeated Tokens: {repetitions}")
         print("-" * 80)
+        print(text_to_handcrafted_features(text, tokenizer, model, num_fft_features=args.fft_features))
+        print("=" * 80)
 
 if __name__ == "__main__":
     import argparse

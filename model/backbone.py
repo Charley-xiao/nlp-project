@@ -184,5 +184,6 @@ if __name__ == "__main__":
         handcrafted_dim, encoder_model_name, hidden_dim=hidden_dim,
         output_dim=output_dim, dropout=0.1, nhead=2, num_layers=2, dim_feedforward=256
     )
+    print(model)
     logits = model(handcrafted_features, raw_texts)
     print("Logits shape:", logits.shape)  # Expected: (batch_size, output_dim)
