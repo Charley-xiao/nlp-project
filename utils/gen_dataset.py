@@ -10,7 +10,8 @@ from calc import (
     calculate_syntax_tree_depth,
     check_repetition,
     calculate_token_entropy,
-    compute_entropy_fft_features
+    compute_entropy_fft_features,
+    calculate_perplexity
 )
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import pandas as pd 

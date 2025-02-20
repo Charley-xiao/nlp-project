@@ -55,15 +55,23 @@ def compute_entropy_fft_features(entropy_values, num_features=10):
     return fft_features
 
 def calculate_perplexity(text, tokenizer, model):
-    inputs = tokenizer(text, return_tensors="pt")
-    input_ids = inputs["input_ids"].squeeze(0)
+    inputs = tokenizer(text, return_tensors="pt", padding=True)
+    input_ids = inputs['input_ids']
     with torch.no_grad():
-        outputs = model(input_ids=input_ids)
+        outputs = model(**inputs)
         logits = outputs.logits
     probs = F.softmax(logits, dim=-1)
-    log_likelihood = torch.sum(torch.log(probs + 1e-10), dim=-1)
-    perplexity = torch.exp(-torch.mean(log_likelihood)).item()
-    return perplexity
+    total_loss = 0.0
+    token_count = 0
+    for i in range(input_ids.shape[0]):
+        for j in range(input_ids.shape[1]):
+            token_id = input_ids[i, j]
+            token_prob = probs[i, j, token_id]
+            total_loss += -torch.log(token_prob + 1e-10)
+            token_count += 1
+    avg_loss = total_loss / token_count
+    perplexity = torch.exp(avg_loss)
+    return perplexity.item()
 
 def calculate_lexical_diversity(text):
     tokens = word_tokenize(text)
