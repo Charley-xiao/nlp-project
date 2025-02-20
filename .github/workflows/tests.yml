@@ -31,6 +31,10 @@ jobs:
         pip install -r requirements.txt
         python -m spacy download en_core_web_sm
 
+    - name: Test calc.py functionalities
+      run: |
+        python utils/calc.py --dataset_name artem9k/ai-text-detection-pile --model_name Qwen/Qwen2.5-0.5B-Instruct
+
     - name: Unzip data
       run: |
         cd data
