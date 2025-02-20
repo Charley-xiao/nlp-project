@@ -43,10 +43,11 @@ jobs:
     - name: Preprocess data
       run: |
         python utils/preprocess.py
+    #     python utils/downscale.py
 
-    - name: Generate dataset
-      run: |
-        python utils/gen_dataset.py
+    # - name: Generate dataset
+    #   run: |
+    #     python utils/gen_dataset.py
 
     - name: Run unit tests
       run: |

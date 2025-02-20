@@ -20,7 +20,7 @@ nltk.download('punkt_tab')
 nltk.download('averaged_perceptron_tagger_eng')
 
 def calculate_token_entropy(text, tokenizer, model):
-    inputs = tokenizer(text, return_tensors="pt", padding=True)
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
     with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
@@ -50,7 +50,7 @@ def compute_entropy_fft_features(entropy_values, num_features=10):
 def calculate_perplexity(texts, tokenizer, model):
     if isinstance(texts, str):
         texts = [texts]
-    inputs = tokenizer(texts, return_tensors="pt", padding=True)
+    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=512)
     input_ids = inputs['input_ids']  # [batch_size, seq_len]
     attention_mask = inputs.get('attention_mask', None)
     with torch.no_grad():

@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
-from calc import (
+from utils.calc import (
     text_to_handcrafted_features
 )
 from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -10,6 +10,7 @@ import argparse
 import os
 import random
 import pickle
+from tqdm import tqdm
 
 class TextClassificationDataset(Dataset):
     def __init__(self, dataset):
@@ -20,7 +21,7 @@ class TextClassificationDataset(Dataset):
 
     def __getitem__(self, idx):
         handcrafted_features, text, label = self.dataset[idx]
-        return handcrafted_features, text, label
+        return np.float32(handcrafted_features), text, label
 
 def generate_dataset(csv_file, tokenizer, model, num_fft_features=10):
     """
@@ -39,7 +40,10 @@ def generate_dataset(csv_file, tokenizer, model, num_fft_features=10):
     """
     if not os.path.exists(csv_file):
         raise FileNotFoundError(f"File not found: {csv_file}")
-    if os.path.exists('cache/train.pkl') and os.path.exists('cache/val.pkl') and os.path.exists('cache/test.pkl'):
+    if (os.path.exists('cache')
+        and os.path.exists('cache/train.pkl') 
+        and os.path.exists('cache/val.pkl') 
+        and os.path.exists('cache/test.pkl')):
         print("Loading cached dataset...")
         with open('cache/train.pkl', 'rb') as f:
             train_dataset = pickle.load(f)
@@ -52,7 +56,7 @@ def generate_dataset(csv_file, tokenizer, model, num_fft_features=10):
         df = pd.read_csv(csv_file)
         # For each text, calculate handcrafted features
         dataset = []
-        for _, row in df.iterrows():
+        for _, row in tqdm(df.iterrows()):
             text = row['text']
             handcrafted_features = text_to_handcrafted_features(text, tokenizer, model, num_fft_features)
             label = row['generated']
@@ -65,6 +69,8 @@ def generate_dataset(csv_file, tokenizer, model, num_fft_features=10):
         val_dataset = dataset[train_size:train_size+val_size]
         test_dataset = dataset[train_size+val_size:]
         # Cache datasets
+        if not os.path.exists('cache'):
+            os.makedirs('cache')
         with open('cache/train.pkl', 'wb') as f:
             pickle.dump(train_dataset, f)
         with open('cache/val.pkl', 'wb') as f:
@@ -76,7 +82,7 @@ def generate_dataset(csv_file, tokenizer, model, num_fft_features=10):
     test_dataset = TextClassificationDataset(test_dataset)
     return train_dataset, val_dataset, test_dataset
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description="Generate dataset for text classification")
     parser.add_argument("--csv_file", type=str, default="data/preprocessed.csv", help="Path to preprocessed CSV file")
     parser.add_argument("--model_name", type=str, default="Qwen/Qwen2.5-0.5B-Instruct", help="Pretrained model name")
@@ -97,11 +103,11 @@ if __name__ == '__main__':
     test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False)
 
     for handcrafted_features, text, label in train_loader:
-        print(handcrafted_features.size(), text, label)
+        print(handcrafted_features.size(), len(text), label)
         break
     for handcrafted_features, text, label in val_loader:
-        print(handcrafted_features.size(), text, label)
+        print(handcrafted_features.size(), len(text), label)
         break
     for handcrafted_features, text, label in test_loader:
-        print(handcrafted_features.size(), text, label)
+        print(handcrafted_features.size(), len(text), label)
         break
