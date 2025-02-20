@@ -4,13 +4,11 @@ on:
   push:
     branches:
       - '*'
-    paths-ignore:
-      - 'README.md'
+    paths-ignore: ['README.md', 'LICENSE']
   pull_request:
     branches:
       - '*'
-    paths-ignore:
-      - 'README.md'
+    paths-ignore: ['README.md', 'LICENSE']
 
 jobs:
   test:
