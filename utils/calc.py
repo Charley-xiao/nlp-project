@@ -26,7 +26,7 @@ def calculate_token_entropy(text, tokenizer, model):
         logits = outputs.logits
     probs = F.softmax(logits, dim=-1)
     entropies_tensor = - torch.sum(probs * torch.log(probs + 1e-10), dim=-1)
-    entropies = entropies_tensor.numpy().tolist()
+    entropies = np.squeeze(entropies_tensor.numpy()).tolist()
     return entropies
 
 def compute_entropy_fft_features(entropy_values, num_features=10):
