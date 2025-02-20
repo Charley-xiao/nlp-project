@@ -120,7 +120,7 @@ def calc_main(args):
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     model = AutoModelForCausalLM.from_pretrained(args.model_name)
 
-    for example in dataset:
+    for example in dataset[:5]:
         text = example[args.text_column]
         print(f"Processing text: {text[:100]}...")
 
@@ -140,6 +140,7 @@ def calc_main(args):
         repetitions = check_repetition(text)
 
         # Print (or save) results. For a classifier, you might want to aggregate these into a single feature vector.
+        print(f"Entropy Values: {entropies}")
         print(f"Average Entropy: {np.mean(entropies):.4f}")
         print(f"Entropy FFT Features: {entropy_fft_features}")
         print(f"Perplexity: {perplexity:.4f}")
