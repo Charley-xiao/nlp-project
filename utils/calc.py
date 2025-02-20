@@ -120,7 +120,7 @@ def calc_main(args):
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
     model = AutoModelForCausalLM.from_pretrained(args.model_name)
 
-    for example in dataset[:5]:
+    for example in dataset.select(range(5)):
         text = example[args.text_column]
         print(f"Processing text: {text[:100]}...")
 
