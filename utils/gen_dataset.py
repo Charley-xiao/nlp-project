@@ -17,5 +17,8 @@ import pandas as pd
 import numpy as np
 import argparse
 
-class TextAndFeaturesDataset(Dataset):
+class TextClassificationDataset(Dataset):
+    pass
+
+def generate_dataset(csv_file, handcrafted_dim):
     pass

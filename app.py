@@ -19,13 +19,6 @@ with classifier_tab:
 
 with report_tab:
     st.header("Report")
-    st.markdown(
-        """
-        **Overview:**
-        
-        This report will provide insights into how the classifier distinguishes between human written text and machine generated text. 
-        It will include methodology, performance metrics, and error analysis. 
-        
-        *Details coming soon...*
-        """
-    )
+    with open("assets/report.md", "r") as file:
+        report = file.read()
+    st.markdown(report)
