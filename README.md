@@ -1,8 +1,21 @@
-# NLP-Project
+<div align="center">
+  <h1>AI Text Detection</h1>
+  <p>Project for CS310 NLP, Spring 2025 at SUSTech</p>
 
-Needs fixing:
+[![Website](https://img.shields.io/website-up-down-green-red/http/shields.io.svg)](TODO)
 
-`train.py`: unexpected stop of training after 1 epoch.
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![GitHub last commit](https://img.shields.io/github/last-commit/Charley-xiao/nlp-project)](https://github.com/Charley-xiao/nlp-project/commits/master)
+[![GitHub issues](https://img.shields.io/github/issues/Charley-xiao/nlp-project)](https://github.com/Charley-xiao/nlp-project/issues)
+</div>
+
+> Needs fixing: `train.py`: unexpected stop of training after 1 epoch.
+
+## Overview
+
+<div align="center">
+  <img src="./assets/workflow.png" alt="overview" width="80%">
+</div>
 
 ## Datasets
 
@@ -22,5 +35,3 @@ python -m spacy download en_core_web_sm
 ```
 python utils/preprocess.py
 ```
-
-![workflow](./assets/workflow.png)
