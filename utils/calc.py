@@ -21,19 +21,12 @@ nltk.download('averaged_perceptron_tagger_eng')
 
 def calculate_token_entropy(text, tokenizer, model):
     inputs = tokenizer(text, return_tensors="pt", padding=True)
-    input_ids = inputs['input_ids']
     with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
     probs = F.softmax(logits, dim=-1)
-    entropies = []
-    for i in range(input_ids.shape[0]):
-        sample_entropy = 0.0
-        for j in range(input_ids.shape[1]):
-            token_id = input_ids[i, j]
-            token_prob = probs[i, j, token_id]
-            sample_entropy += - (token_prob * torch.log(token_prob + 1e-10))
-        entropies.append(sample_entropy.item())
+    entropies_tensor = - torch.sum(probs * torch.log(probs + 1e-10), dim=-1)
+    entropies = entropies_tensor.numpy().tolist()
     return entropies
 
 def compute_entropy_fft_features(entropy_values, num_features=10):
@@ -54,24 +47,29 @@ def compute_entropy_fft_features(entropy_values, num_features=10):
         fft_features = fft_magnitudes[:num_features]
     return fft_features
 
-def calculate_perplexity(text, tokenizer, model):
-    inputs = tokenizer(text, return_tensors="pt", padding=True)
-    input_ids = inputs['input_ids']
+def calculate_perplexity(texts, tokenizer, model):
+    if isinstance(texts, str):
+        texts = [texts]
+    inputs = tokenizer(texts, return_tensors="pt", padding=True)
+    input_ids = inputs['input_ids']  # [batch_size, seq_len]
+    attention_mask = inputs.get('attention_mask', None)
     with torch.no_grad():
-        outputs = model(**inputs)
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+        # logits: [batch_size, seq_len, vocab_size]
         logits = outputs.logits
-    probs = F.softmax(logits, dim=-1)
-    total_loss = 0.0
-    token_count = 0
-    for i in range(input_ids.shape[0]):
-        for j in range(input_ids.shape[1]):
-            token_id = input_ids[i, j]
-            token_prob = probs[i, j, token_id]
-            total_loss += -torch.log(token_prob + 1e-10)
-            token_count += 1
-    avg_loss = total_loss / token_count
-    perplexity = torch.exp(avg_loss)
-    return perplexity.item()
+    # log_softmax => [batch_size, seq_len, vocab_size]
+    log_probs = F.log_softmax(logits, dim=-1)
+    real_token_log_probs = torch.gather(log_probs, 2, input_ids.unsqueeze(-1)).squeeze(-1)
+    if attention_mask is not None:
+        valid_log_probs = real_token_log_probs * attention_mask
+        n_valid_tokens = attention_mask.sum().item()
+    else:
+        valid_log_probs = real_token_log_probs
+        n_valid_tokens = real_token_log_probs.numel()
+    nll = - valid_log_probs
+    avg_nll = nll.sum() / n_valid_tokens
+    ppl = torch.exp(avg_nll)
+    return ppl.item()
 
 def calculate_lexical_diversity(text):
     tokens = word_tokenize(text)
