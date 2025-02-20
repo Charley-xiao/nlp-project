@@ -17,21 +17,52 @@
   <img src="./assets/workflow.png" alt="overview" width="80%">
 </div>
 
+TODO: Add description
+
+We released a [web app](TODO) and also made the checkpoints for the model available at [where?](TODO).
+
 ## Datasets
 
-https://www.kaggle.com/datasets/sunilthite/llm-detect-ai-generated-text-dataset
+We combined two datasets for training and testing:
+1. [LLM - Detect AI Generated Text Dataset](https://www.kaggle.com/datasets/sunilthite/llm-detect-ai-generated-text-dataset)
+2. [AI Text Dectection Pile](https://huggingface.co/datasets/artem9k/ai-text-detection-pile)
 
-https://huggingface.co/datasets/artem9k/ai-text-detection-pile
+TODO: Add dataset description
 
-## Installation
+## Setup
 
-```
+```bash
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
-```
-
-## Preprocessing
-
-```
 python utils/preprocess.py
 ```
+
+The last command will preprocess the datasets and save the combined dataset in the `data/` directory.
+
+## Training
+
+```bash
+python train.py
+```
+
+TODO: Add training description
+
+## Evaluation
+
+```bash
+TODO
+```
+
+TODO: Add evaluation description
+
+## Results
+
+See TODO.
+
+## Contributors
+
+![[](https://github.com/Charley-xiao/nlp-project/graphs/contributors)](https://contrib.rocks/image?repo=Charley-xiao/nlp-project)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
