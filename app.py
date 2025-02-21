@@ -5,6 +5,7 @@ from model import ClassifierBackbone
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 from utils.gen_dataset import text_to_handcrafted_features
+import os
 
 torch.classes.__path__ = []
 
@@ -20,7 +21,18 @@ argparser.add_argument("--dropout", type=float, default=0.1, help="Dropout rate"
 argparser.add_argument("--nhead", type=int, default=2, help="Number of attention heads")
 argparser.add_argument("--num_layers", type=int, default=2, help="Number of layers in the transformer")
 argparser.add_argument("--dim_feedforward", type=int, default=256, help="Dimension of the feedforward network")
+argparser.add_argument("--model_version", type=str, default="v0.1", help="Model version")
 args = argparser.parse_args()
+
+import utils.download
+
+if not os.path.exists(args.classifier_path):
+    os.makedirs("checkpoints", exist_ok=True)
+    commands = ['wget', f'https://github.com/Charley-xiao/nlp-project/releases/download/{args.model_version}/classifier.tar.gz', '-O', 'checkpoints/classifier.tar.gz']
+    os.system(' '.join(commands))
+    commands = ['tar', '-xvf', 'checkpoints/classifier.tar.gz', '-C', 'checkpoints']
+    os.system(' '.join(commands))
+
 
 classifier = ClassifierBackbone(
     args.handcrafted_dim,
