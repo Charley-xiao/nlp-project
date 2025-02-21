@@ -4,7 +4,7 @@ import sys
 import nltk
 nltk.download('punkt_tab')
 nltk.download('averaged_perceptron_tagger_eng')
-os.system(f'sudo {sys.executable} -m spacy download en_core_web_sm')
+os.system(f'sudo -S {sys.executable} -m spacy download en_core_web_sm')
 import random
 import argparse
 from model import ClassifierBackbone
@@ -31,9 +31,9 @@ args = argparser.parse_args()
 
 if not os.path.exists(args.classifier_path):
     os.makedirs("checkpoints", exist_ok=True)
-    commands = ['sudo', 'wget', f'https://github.com/Charley-xiao/nlp-project/releases/download/{args.model_version}/classifier.tar.gz', '-O', 'checkpoints/classifier.tar.gz']
+    commands = ['sudo -S', 'wget', f'https://github.com/Charley-xiao/nlp-project/releases/download/{args.model_version}/classifier.tar.gz', '-O', 'checkpoints/classifier.tar.gz']
     os.system(' '.join(commands))
-    commands = ['sudo', 'tar', '-xvf', 'checkpoints/classifier.tar.gz', '-C', 'checkpoints']
+    commands = ['sudo -S', 'tar', '-xvf', 'checkpoints/classifier.tar.gz', '-C', 'checkpoints']
     os.system(' '.join(commands))
 
 
