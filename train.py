@@ -7,26 +7,31 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm, trange
 import os
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 from model import ClassifierBackbone 
 from utils.gen_dataset import TextClassificationDataset, generate_dataset
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModel
 
 
-def train(args):
+def train_and_test(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     tokenizer = AutoTokenizer.from_pretrained(args.entropy_model_name)
     tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name)
 
-    train_dataset, val_dataset, _ = generate_dataset(args.dataset_csv, tokenizer, model)
+    train_dataset, val_dataset, test_dataset = generate_dataset(args.dataset_csv, tokenizer, model)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
+    encoder_tokenizer = AutoTokenizer.from_pretrained(args.encoder_model_name)
+    encoder_model = AutoModel.from_pretrained(args.encoder_model_name)
+    latent_dim = encoder_model.config.hidden_size
+
     model = ClassifierBackbone(
         args.handcrafted_dim,
-        args.encoder_model_name,
+        latent_dim,
         hidden_dim=args.hidden_dim,
         output_dim=args.output_dim,
         dropout=args.dropout,
@@ -50,8 +55,10 @@ def train(args):
             handcrafted_features = handcrafted_features.to(device)
             labels = labels.to(device)
 
+            latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
+
             optimizer.zero_grad()
-            logits = model(handcrafted_features, texts)
+            logits = model(handcrafted_features, latent_features)
             loss = criterion(logits, labels)
             loss.backward()
 
@@ -76,7 +83,8 @@ def train(args):
             for handcrafted_features, texts, labels in val_loader:
                 handcrafted_features = handcrafted_features.to(device)
                 labels = labels.to(device)
-                logits = model(handcrafted_features, texts)
+                latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
+                logits = model(handcrafted_features, latent_features)
                 loss = criterion(logits, labels)
                 val_loss += loss.item() * handcrafted_features.size(0)
 
@@ -94,6 +102,42 @@ def train(args):
                 os.makedirs("checkpoints")
             torch.save(model.state_dict(), checkpoint_path)
             print(f"Saved checkpoint: {checkpoint_path}")
+
+
+    torch.save(model.state_dict(), f"checkpoints/classifier.pt")
+    print("Training complete. Model saved.")
+
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+    model.eval()
+    test_loss = 0.0
+    all_preds = []
+    all_labels = []
+
+    with torch.no_grad():
+        for handcrafted_features, texts, labels in test_loader:
+            handcrafted_features = handcrafted_features.to(device)
+            labels = labels.to(device)
+            latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
+            logits = model(handcrafted_features, latent_features)
+            loss = criterion(logits, labels)
+            test_loss += loss.item() * handcrafted_features.size(0)
+
+            predictions = torch.argmax(logits, dim=1)
+            all_preds.extend(predictions.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+    test_loss /= len(test_dataset)
+    accuracy = accuracy_score(all_labels, all_preds)
+    precision = precision_score(all_labels, all_preds, average='weighted')
+    recall = recall_score(all_labels, all_preds, average='weighted')
+    f1 = f1_score(all_labels, all_preds, average='weighted')
+
+    print(f"Test Loss: {test_loss:.4f}")
+    print(f"Test Accuracy: {accuracy:.4f}")
+    print(f"Test Precision: {precision:.4f}")
+    print(f"Test Recall: {recall:.4f}")
+    print(f"Test F1 Score: {f1:.4f}")
+
 
 
 def main():
@@ -118,7 +162,7 @@ def main():
     parser.add_argument("--save_interval", type=int, default=5, help="Save a checkpoint every N epochs")
     parser.add_argument("--checkpoint_prefix", type=str, default="classifier_checkpoint", help="Prefix for checkpoint filenames")
     args = parser.parse_args()
-    train(args)
+    train_and_test(args)
 
 
 if __name__ == "__main__":

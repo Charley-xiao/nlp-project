@@ -2,4 +2,4 @@
 /data/*.csv
 /artem9k
 /cache
-/checkpoints
+/checkpoints/classifier_*.pt

@@ -97,14 +97,14 @@ class CombinedClassifier(nn.Module):
 # Classifier Backbone with Trainable Encoder
 # ------------------------------
 class ClassifierBackbone(nn.Module):
-    def __init__(self, handcrafted_dim, encoder_model_name, hidden_dim=128, output_dim=2, dropout=0.1,
+    def __init__(self, handcrafted_dim, latent_dim, hidden_dim=128, output_dim=2, dropout=0.1,
                  nhead=2, num_layers=1, dim_feedforward=128):
         """
-        Classifier backbone that integrates a trainable text encoder with handcrafted features.
+        Classifier backbone.
         
         Args:
             handcrafted_dim (int): Dimensionality of the handcrafted feature vector.
-            encoder_model_name (str): Hugging Face model name for the text encoder (e.g., "roberta-base").
+            latent_dim (int): Dimensionality of the latent feature vector from the text encoder.
             hidden_dim (int): Internal hidden dimension for processing each branch.
             output_dim (int): Number of output classes.
             dropout (float): Dropout probability.
@@ -113,10 +113,6 @@ class ClassifierBackbone(nn.Module):
             dim_feedforward (int): Dimensionality of the feed-forward network in transformer blocks.
         """
         super(ClassifierBackbone, self).__init__()
-        # Trainable text encoder for latent features.
-        self.tokenizer = AutoTokenizer.from_pretrained(encoder_model_name)
-        self.text_encoder = AutoModel.from_pretrained(encoder_model_name)
-        latent_dim = self.text_encoder.config.hidden_size  # e.g., 768 for many models
 
         # Branch for handcrafted features.
         self.handcrafted_fc = nn.Sequential(
@@ -133,25 +129,16 @@ class ClassifierBackbone(nn.Module):
         # Combined classifier that fuses both branches.
         self.combined_classifier = CombinedClassifier(hidden_dim, nhead, num_layers, dim_feedforward, output_dim, dropout)
 
-    def forward(self, handcrafted_features, raw_texts):
+    def forward(self, handcrafted_features, latent_features):
         """
         Args:
             handcrafted_features (torch.Tensor): Tensor of handcrafted features, shape (batch, handcrafted_dim).
-            raw_texts (list[str]): List of raw text strings.
+            latent_features (torch.Tensor): Tensor of latent features from text encoder, shape (batch, latent_dim).
         
         Returns:
             torch.Tensor: Logits of shape (batch, output_dim).
         """
-        # Process handcrafted features.
         h_handcrafted = self.handcrafted_fc(handcrafted_features)  # (batch, hidden_dim)
-        
-        # Tokenize and encode raw texts.
-        inputs = self.tokenizer(raw_texts, return_tensors="pt", padding=True, truncation=True)
-        # Ensure inputs are on the same device as the model.
-        inputs = {k: v.to(h_handcrafted.device) for k, v in inputs.items()}
-        encoder_outputs = self.text_encoder(**inputs)
-        # Mean pool the last hidden state to obtain a fixed-length latent feature.
-        latent_features = encoder_outputs.last_hidden_state.mean(dim=1)  # (batch, latent_dim)
         h_latent = self.latent_fc(latent_features)  # (batch, hidden_dim)
         
         # Fuse the two branches using the combined classifier.
@@ -180,10 +167,15 @@ if __name__ == "__main__":
         "Final example sentence in the batch."
     ]
 
+    tokenizer = AutoTokenizer.from_pretrained(encoder_model_name)
+    text_encoder = AutoModel.from_pretrained(encoder_model_name)
+    latent_features = text_encoder(**tokenizer(raw_texts, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
+    latent_dim = text_encoder.config.hidden_size
+
     model = ClassifierBackbone(
-        handcrafted_dim, encoder_model_name, hidden_dim=hidden_dim,
+        handcrafted_dim, latent_dim, hidden_dim=hidden_dim,
         output_dim=output_dim, dropout=0.1, nhead=2, num_layers=2, dim_feedforward=256
     )
     print(model)
-    logits = model(handcrafted_features, raw_texts)
+    logits = model(handcrafted_features, latent_features)
     print("Logits shape:", logits.shape)  # Expected: (batch_size, output_dim)
