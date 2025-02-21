@@ -9,7 +9,7 @@
 [![GitHub issues](https://img.shields.io/github/issues/Charley-xiao/nlp-project)](https://github.com/Charley-xiao/nlp-project/issues)
 </div>
 
-> Needs fixing: `train.py`: unexpected stop of training after 1 epoch.
+> Needs fixing: `train.py`: validation acc.
 
 ## Overview
 
@@ -34,6 +34,7 @@ TODO: Add dataset description
 ```bash
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
+python utils/download.py
 python utils/preprocess.py
 ```
 

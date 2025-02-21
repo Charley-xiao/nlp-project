@@ -6,6 +6,7 @@ import argparse
 import pandas as pd
 import numpy as np
 from tqdm import tqdm, trange
+import os
 
 from model import ClassifierBackbone 
 from utils.gen_dataset import TextClassificationDataset, generate_dataset
@@ -16,6 +17,7 @@ def train(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     tokenizer = AutoTokenizer.from_pretrained(args.entropy_model_name)
+    tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name)
 
     train_dataset, val_dataset, _ = generate_dataset(args.dataset_csv, tokenizer, model)
@@ -32,6 +34,9 @@ def train(args):
         num_layers=args.num_layers,
         dim_feedforward=args.dim_feedforward
     ).to(device)
+    print("Model initialized:")
+    print(model)
+    print(f"Number of parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
@@ -85,6 +90,8 @@ def train(args):
 
         if epoch % args.save_interval == 0:
             checkpoint_path = f"checkpoints/{args.checkpoint_prefix}_epoch{epoch}.pt"
+            if not os.path.exists("checkpoints"):
+                os.makedirs("checkpoints")
             torch.save(model.state_dict(), checkpoint_path)
             print(f"Saved checkpoint: {checkpoint_path}")
 

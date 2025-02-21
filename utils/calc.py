@@ -16,8 +16,6 @@ import numpy as np
 from scipy.stats import entropy
 
 nlp = spacy.load('en_core_web_sm')
-nltk.download('punkt_tab')
-nltk.download('averaged_perceptron_tagger_eng')
 
 def calculate_token_entropy(text, tokenizer, model):
     inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
