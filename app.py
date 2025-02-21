@@ -1,15 +1,13 @@
-import streamlit as st
 import os
 import sys
 import nltk
-nltk.download('punkt_tab')
-nltk.download('averaged_perceptron_tagger_eng')
 import spacy
-spacy.cli.download("en_core_web_sm")
+import streamlit as st
 import random
 import argparse
+import numpy as np
 from model import ClassifierBackbone
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModel
 import torch
 from utils.gen_dataset import text_to_handcrafted_features
 
@@ -30,37 +28,45 @@ argparser.add_argument("--dim_feedforward", type=int, default=256, help="Dimensi
 argparser.add_argument("--model_version", type=str, default="v0.1", help="Model version")
 args = argparser.parse_args()
 
-if not os.path.exists(args.classifier_path):
-    os.makedirs("checkpoints", exist_ok=True)
-    commands = ['sudo -S', 'wget', f'https://github.com/Charley-xiao/nlp-project/releases/download/{args.model_version}/classifier.tar.gz', '-O', 'checkpoints/classifier.tar.gz']
-    os.system(' '.join(commands))
-    commands = ['sudo -S', 'tar', '-xvf', 'checkpoints/classifier.tar.gz', '-C', 'checkpoints']
-    os.system(' '.join(commands))
-
-
-encoder_tokenizer = AutoTokenizer.from_pretrained(args.encoder_model_name)
-encoder_model = AutoModelForCausalLM.from_pretrained(args.encoder_model_name)
-latent_dim = encoder_model.config.hidden_size
-
-classifier = ClassifierBackbone(
-    args.handcrafted_dim,
-    latent_dim,
-    hidden_dim=args.hidden_dim,
-    output_dim=args.output_dim,
-    dropout=args.dropout,
-    nhead=args.nhead,
-    num_layers=args.num_layers,
-    dim_feedforward=args.dim_feedforward
-)
-classifier.load_state_dict(torch.load(args.classifier_path, weights_only=True))
-classifier.eval()
-
-entropy_model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name)
-entropy_tokenizer = AutoTokenizer.from_pretrained(args.entropy_model_name)
-
 st.set_page_config(page_title="Text Source Identifier", layout="centered")
 st.title("Text Source Identifier")
 classifier_tab, report_tab = st.tabs(["Classifier", "Report"])
+
+@st.cache_resource
+def load_models(_args):
+    if not os.path.exists(nltk.data.find('tokenizers/punkt_tab')):
+        nltk.download('punkt_tab')
+    if not os.path.exists(nltk.data.find('taggers/averaged_perceptron_tagger_eng')):
+        nltk.download('averaged_perceptron_tagger_eng')
+    try:
+        spacy.load("en_core_web_sm")
+    except OSError:
+        spacy.cli.download("en_core_web_sm")
+        spacy.load("en_core_web_sm")
+
+    encoder_tokenizer = AutoTokenizer.from_pretrained(args.encoder_model_name)
+    encoder_model = AutoModel.from_pretrained(args.encoder_model_name)
+    latent_dim = encoder_model.config.hidden_size
+
+    classifier = ClassifierBackbone(
+        args.handcrafted_dim,
+        latent_dim,
+        hidden_dim=args.hidden_dim,
+        output_dim=args.output_dim,
+        dropout=args.dropout,
+        nhead=args.nhead,
+        num_layers=args.num_layers,
+        dim_feedforward=args.dim_feedforward
+    )
+    classifier.load_state_dict(torch.load(args.classifier_path, weights_only=True))
+    classifier.eval()
+
+    entropy_model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name)
+    entropy_tokenizer = AutoTokenizer.from_pretrained(args.entropy_model_name)
+
+    return encoder_tokenizer, encoder_model, classifier, entropy_tokenizer, entropy_model
+
+encoder_tokenizer, encoder_model, classifier, entropy_tokenizer, entropy_model = load_models(args)
 
 with classifier_tab:
     st.header("Distinguish Human vs. Machine Written Text")
@@ -70,12 +76,20 @@ with classifier_tab:
         if input_text.strip() == "":
             st.warning("Please enter some text to classify.")
         else:
-            handcrafted_features = text_to_handcrafted_features(input_text, entropy_tokenizer, entropy_model)
-            latent_features = encoder_model(**encoder_tokenizer(input_text, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
-            logits = classifier(handcrafted_features, latent_features)
-            prediction = torch.argmax(logits, dim=1).item()
-            result = "Machine Generated Text" if prediction == 1 else "Human Written Text"
-            st.success(f"Prediction: {result}")
+            with st.spinner('Classifying text...'):
+                handcrafted_features = text_to_handcrafted_features(input_text, entropy_tokenizer, entropy_model)
+                handcrafted_features = torch.tensor(np.float32(handcrafted_features)).unsqueeze(0)
+                latent_features = encoder_model(**encoder_tokenizer(input_text, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
+                try:
+                    logits = classifier(handcrafted_features, latent_features)
+                    prediction = torch.argmax(logits, dim=1).item()
+                    prob = torch.softmax(logits, dim=1).max().item()
+                    prob = prob * 100
+                    result = "Machine Generated Text" if prediction == 1 else "Human Written Text"
+                    result += f" (Probability: {prob:.2f}%)"
+                    st.success(f"Prediction: {result}")
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
 
 with report_tab:
     st.header("Report")
