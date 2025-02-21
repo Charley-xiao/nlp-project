@@ -1,13 +1,16 @@
 import streamlit as st
+import os
+import sys
+import nltk
+nltk.download('punkt_tab')
+nltk.download('averaged_perceptron_tagger_eng')
+os.system(f'{sys.executable} -m spacy download en_core_web_sm')
 import random
 import argparse
 from model import ClassifierBackbone
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 from utils.gen_dataset import text_to_handcrafted_features
-import os
-import nltk
-import sys
 
 torch.classes.__path__ = []
 
@@ -25,10 +28,6 @@ argparser.add_argument("--num_layers", type=int, default=2, help="Number of laye
 argparser.add_argument("--dim_feedforward", type=int, default=256, help="Dimension of the feedforward network")
 argparser.add_argument("--model_version", type=str, default="v0.1", help="Model version")
 args = argparser.parse_args()
-
-nltk.download('punkt_tab')
-nltk.download('averaged_perceptron_tagger_eng')
-os.system(f'{sys.executable} -m spacy download en_core_web_sm')
 
 if not os.path.exists(args.classifier_path):
     os.makedirs("checkpoints", exist_ok=True)
