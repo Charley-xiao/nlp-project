@@ -9,7 +9,7 @@
 [![GitHub issues](https://img.shields.io/github/issues/Charley-xiao/nlp-project)](https://github.com/Charley-xiao/nlp-project/issues)
 </div>
 
-> Needs fixing: `train.py`: validation acc.
+> Needs fixing: `train.py`: validation acc. Change roberta-base to something else.
 
 ## Overview
 
