@@ -34,10 +34,8 @@ classifier_tab, report_tab = st.tabs(["Classifier", "Report"])
 
 @st.cache_resource
 def load_models(_args):
-    if not os.path.exists(nltk.data.find('tokenizers/punkt_tab')):
-        nltk.download('punkt_tab')
-    if not os.path.exists(nltk.data.find('taggers/averaged_perceptron_tagger_eng')):
-        nltk.download('averaged_perceptron_tagger_eng')
+    nltk.download('punkt_tab')
+    nltk.download('averaged_perceptron_tagger_eng')
     try:
         spacy.load("en_core_web_sm")
     except OSError:
