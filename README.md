@@ -40,7 +40,7 @@ python utils/preprocess.py
 
 The last command will preprocess the datasets and save the combined dataset in the `data/` directory.
 
-## Training
+## Training & Testing
 
 ```bash
 python train.py
@@ -48,13 +48,13 @@ python train.py
 
 TODO: Add training description
 
-## Evaluation
+## Deployment
+
+We used Streamlit for a simple web app to demonstrate the ability of the model. To run the app, use the following command:
 
 ```bash
-TODO
+streamlit run app.py
 ```
-
-TODO: Add evaluation description
 
 ## Results
 
