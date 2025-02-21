@@ -10,4 +10,3 @@ textstat==0.7.5
 torch==2.5.1
 tqdm==4.66.5
 transformers==4.48.0
-en_core_web_sm-3.1.0-py3-none-any.whl
