@@ -6,6 +6,8 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 from utils.gen_dataset import text_to_handcrafted_features
 import os
+import nltk
+import sys
 
 torch.classes.__path__ = []
 
@@ -24,7 +26,9 @@ argparser.add_argument("--dim_feedforward", type=int, default=256, help="Dimensi
 argparser.add_argument("--model_version", type=str, default="v0.1", help="Model version")
 args = argparser.parse_args()
 
-import utils.download
+nltk.download('punkt_tab')
+nltk.download('averaged_perceptron_tagger_eng')
+os.system(f'{sys.executable} -m spacy download en_core_web_sm')
 
 if not os.path.exists(args.classifier_path):
     os.makedirs("checkpoints", exist_ok=True)
