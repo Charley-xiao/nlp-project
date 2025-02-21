@@ -4,7 +4,7 @@ import sys
 import nltk
 nltk.download('punkt_tab')
 nltk.download('averaged_perceptron_tagger_eng')
-os.system(f'sudo -S {sys.executable} -m spacy download en_core_web_sm')
+# os.system(f'sudo -S {sys.executable} -m spacy download en_core_web_sm')
 import random
 import argparse
 from model import ClassifierBackbone
@@ -37,9 +37,13 @@ if not os.path.exists(args.classifier_path):
     os.system(' '.join(commands))
 
 
+encoder_tokenizer = AutoTokenizer.from_pretrained(args.encoder_model_name)
+encoder_model = AutoModelForCausalLM.from_pretrained(args.encoder_model_name)
+latent_dim = encoder_model.config.hidden_size
+
 classifier = ClassifierBackbone(
     args.handcrafted_dim,
-    args.encoder_model_name,
+    latent_dim,
     hidden_dim=args.hidden_dim,
     output_dim=args.output_dim,
     dropout=args.dropout,
@@ -47,7 +51,7 @@ classifier = ClassifierBackbone(
     num_layers=args.num_layers,
     dim_feedforward=args.dim_feedforward
 )
-classifier.load_state_dict(torch.load(args.classifier_path, map_location=torch.device('cpu')))
+classifier.load_state_dict(torch.load(args.classifier_path, weights_only=True))
 classifier.eval()
 
 entropy_model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name)
@@ -66,7 +70,8 @@ with classifier_tab:
             st.warning("Please enter some text to classify.")
         else:
             handcrafted_features = text_to_handcrafted_features(input_text, entropy_tokenizer, entropy_model)
-            logits = classifier(torch.tensor(handcrafted_features).unsqueeze(0), [input_text])
+            latent_features = encoder_model(**encoder_tokenizer(input_text, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
+            logits = classifier(handcrafted_features, latent_features)
             prediction = torch.argmax(logits, dim=1).item()
             result = "Machine Generated Text" if prediction == 1 else "Human Written Text"
             st.success(f"Prediction: {result}")
