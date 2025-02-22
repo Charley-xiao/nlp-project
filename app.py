@@ -75,21 +75,24 @@ with classifier_tab:
             st.warning("Please enter some text to classify.")
         else:
             with st.spinner('Classifying text...'):
-                handcrafted_features = text_to_handcrafted_features(input_text, entropy_tokenizer, entropy_model)
-                handcrafted_features = torch.tensor(np.float32(handcrafted_features)).unsqueeze(0)
-                latent_features = encoder_model(
-                    **encoder_tokenizer(input_text, return_tensors="pt", padding=True, truncation=True)
-                ).last_hidden_state.mean(dim=1)
+                try:
+                    handcrafted_features = text_to_handcrafted_features(input_text, entropy_tokenizer, entropy_model)
+                    handcrafted_features = torch.tensor(np.float32(handcrafted_features)).unsqueeze(0)
+                    latent_features = encoder_model(
+                        **encoder_tokenizer(input_text, return_tensors="pt", padding=True, truncation=True)
+                    ).last_hidden_state.mean(dim=1)
+                except IndexError:
+                    st.error("The text is too short to classify. Please try a longer text.")
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
 
                 try:
                     logits = classifier(handcrafted_features, latent_features)
                     prediction = torch.argmax(logits, dim=1).item()
                     prob = torch.softmax(logits, dim=1).max().item() * 100
 
-                    # Craft a more modern display
                     st.subheader("Classification Result")
 
-                    # Insert a small block of CSS for styling
                     st.write("""
                     <style>
                     .result-card {
@@ -111,15 +114,13 @@ with classifier_tab:
                     </style>
                     """, unsafe_allow_html=True)
 
-                    # Choose color/text based on prediction
                     if prediction == 1:
                         label_text = "🤖 Machine Generated"
-                        label_color = "#FF4B4B"  # a red-ish color
+                        label_color = "#FF4B4B"
                     else:
                         label_text = "🙋 Human Written"
-                        label_color = "#2ECC71"  # a green color
+                        label_color = "#2ECC71"
 
-                    # Inject final card with dynamic values
                     st.markdown(f"""
                     <div class="result-card">
                         <div class="result-label" style="color: {label_color};">
