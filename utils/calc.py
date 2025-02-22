@@ -19,12 +19,13 @@ nlp = spacy.load('en_core_web_sm')
 
 def calculate_token_entropy(text, tokenizer, model):
     inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+    inputs = {k: v.to(model.device) for k, v in inputs.items()}
     with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
     probs = F.softmax(logits, dim=-1)
     entropies_tensor = - torch.sum(probs * torch.log(probs + 1e-10), dim=-1)
-    entropies = np.squeeze(entropies_tensor.numpy()).tolist()
+    entropies = np.squeeze(entropies_tensor.cpu().numpy()).tolist()
     return entropies
 
 def compute_entropy_fft_features(entropy_values, num_features=10):
@@ -51,6 +52,9 @@ def calculate_perplexity(texts, tokenizer, model):
     inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=512)
     input_ids = inputs['input_ids']  # [batch_size, seq_len]
     attention_mask = inputs.get('attention_mask', None)
+    input_ids = input_ids.to(model.device)
+    if attention_mask is not None:
+        attention_mask = attention_mask.to(model.device)
     with torch.no_grad():
         outputs = model(input_ids=input_ids, attention_mask=attention_mask)
         # logits: [batch_size, seq_len, vocab_size]

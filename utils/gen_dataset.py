@@ -11,6 +11,7 @@ import os
 import random
 import pickle
 from tqdm import tqdm
+import concurrent.futures
 
 class TextClassificationDataset(Dataset):
     def __init__(self, dataset):
@@ -23,14 +24,13 @@ class TextClassificationDataset(Dataset):
         handcrafted_features, text, label = self.dataset[idx]
         return np.float32(handcrafted_features), text, label
 
-def generate_dataset(csv_file, tokenizer, model, num_fft_features=10):
+def generate_dataset(csv_file, model_name, num_fft_features=10):
     """
     Generate train, validation, and test datasets from a CSV file.
 
     Args:
     - csv_file (str): Path to the CSV file containing the cleaned dataset, containing only two columns: 'text' and 'generated'.
-    - tokenizer (transformers.PreTrainedTokenizer): The tokenizer.
-    - model (transformers.PreTrainedModel): The language model.
+    - model_name (str): Pretrained model name.
     - num_fft_features (int): The number of FFT features to extract from entropy values.
 
     Returns:
@@ -54,8 +54,15 @@ def generate_dataset(csv_file, tokenizer, model, num_fft_features=10):
     else:
         print("Generating dataset...")
         df = pd.read_csv(csv_file)
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForCausalLM.from_pretrained(model_name)
+        tokenizer.pad_token = tokenizer.eos_token
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Device: {device}")
+        model.to(device)
         # For each text, calculate handcrafted features
         dataset = []
+        print("Calculating handcrafted features... Total rows:", len(df))
         for _, row in tqdm(df.iterrows()):
             text = row['text']
             handcrafted_features = text_to_handcrafted_features(text, tokenizer, model, num_fft_features)
@@ -89,10 +96,7 @@ def main():
     parser.add_argument("--num_fft_features", type=int, default=10, help="Number of FFT features")
     args = parser.parse_args()
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    model = AutoModelForCausalLM.from_pretrained(args.model_name)
-
-    train_dataset, val_dataset, test_dataset = generate_dataset(args.csv_file, tokenizer, model, args.num_fft_features)
+    train_dataset, val_dataset, test_dataset = generate_dataset(args.csv_file, args.model_name, args.num_fft_features)
     print(f"Train dataset size: {len(train_dataset)}")
     print(f"Validation dataset size: {len(val_dataset)}")
     print(f"Test dataset size: {len(test_dataset)}")

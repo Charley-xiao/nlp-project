@@ -17,11 +17,12 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModel
 def train_and_test(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    tokenizer = AutoTokenizer.from_pretrained(args.entropy_model_name)
-    tokenizer.pad_token = tokenizer.eos_token
-    model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name)
+    # tokenizer = AutoTokenizer.from_pretrained(args.entropy_model_name)
+    # tokenizer.pad_token = tokenizer.eos_token
+    # model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name)
+    # model.to(device)
 
-    train_dataset, val_dataset, test_dataset = generate_dataset(args.dataset_csv, tokenizer, model)
+    train_dataset, val_dataset, test_dataset = generate_dataset(args.dataset_csv, args.entropy_model_name)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 

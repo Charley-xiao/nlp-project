@@ -28,8 +28,8 @@ argparser.add_argument("--dim_feedforward", type=int, default=256, help="Dimensi
 argparser.add_argument("--model_version", type=str, default="v0.1", help="Model version")
 args = argparser.parse_args()
 
-st.set_page_config(page_title="Text Source Identifier", layout="centered")
-st.title("Text Source Identifier")
+st.set_page_config(page_title="VeriScribbi: Text Source Identifier", layout="centered")
+st.title("VeriScribbi: Text Source Identifier")
 classifier_tab, report_tab = st.tabs(["Classifier", "Report"])
 
 @st.cache_resource
@@ -77,15 +77,60 @@ with classifier_tab:
             with st.spinner('Classifying text...'):
                 handcrafted_features = text_to_handcrafted_features(input_text, entropy_tokenizer, entropy_model)
                 handcrafted_features = torch.tensor(np.float32(handcrafted_features)).unsqueeze(0)
-                latent_features = encoder_model(**encoder_tokenizer(input_text, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
+                latent_features = encoder_model(
+                    **encoder_tokenizer(input_text, return_tensors="pt", padding=True, truncation=True)
+                ).last_hidden_state.mean(dim=1)
+
                 try:
                     logits = classifier(handcrafted_features, latent_features)
                     prediction = torch.argmax(logits, dim=1).item()
-                    prob = torch.softmax(logits, dim=1).max().item()
-                    prob = prob * 100
-                    result = "Machine Generated Text" if prediction == 1 else "Human Written Text"
-                    result += f" (Probability: {prob:.2f}%)"
-                    st.success(f"Prediction: {result}")
+                    prob = torch.softmax(logits, dim=1).max().item() * 100
+
+                    # Craft a more modern display
+                    st.subheader("Classification Result")
+
+                    # Insert a small block of CSS for styling
+                    st.write("""
+                    <style>
+                    .result-card {
+                        background-color: #F9F9F9;
+                        border-radius: 10px;
+                        padding: 20px;
+                        margin-top: 15px;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    }
+                    .result-label {
+                        font-size: 1.3rem;
+                        font-weight: bold;
+                        margin-bottom: 5px;
+                    }
+                    .result-prob {
+                        font-size: 1rem;
+                        color: #555;
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
+
+                    # Choose color/text based on prediction
+                    if prediction == 1:
+                        label_text = "🤖 Machine Generated"
+                        label_color = "#FF4B4B"  # a red-ish color
+                    else:
+                        label_text = "🙋 Human Written"
+                        label_color = "#2ECC71"  # a green color
+
+                    # Inject final card with dynamic values
+                    st.markdown(f"""
+                    <div class="result-card">
+                        <div class="result-label" style="color: {label_color};">
+                            {label_text}
+                        </div>
+                        <div class="result-prob">
+                            Probability: {prob:.2f}%
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
 
