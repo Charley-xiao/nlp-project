@@ -57,6 +57,7 @@ def train_and_test(args):
             labels = labels.to(device)
 
             latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
+            latent_features = latent_features.to(device)
 
             optimizer.zero_grad()
             logits = model(handcrafted_features, latent_features)
@@ -85,6 +86,7 @@ def train_and_test(args):
                 handcrafted_features = handcrafted_features.to(device)
                 labels = labels.to(device)
                 latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
+                latent_features = latent_features.to(device)
                 logits = model(handcrafted_features, latent_features)
                 loss = criterion(logits, labels)
                 val_loss += loss.item() * handcrafted_features.size(0)
@@ -119,6 +121,7 @@ def train_and_test(args):
             handcrafted_features = handcrafted_features.to(device)
             labels = labels.to(device)
             latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
+            latent_features = latent_features.to(device)
             logits = model(handcrafted_features, latent_features)
             loss = criterion(logits, labels)
             test_loss += loss.item() * handcrafted_features.size(0)
