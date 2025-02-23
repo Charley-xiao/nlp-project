@@ -16,18 +16,14 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModel
 
 def train_and_test(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # tokenizer = AutoTokenizer.from_pretrained(args.entropy_model_name)
-    # tokenizer.pad_token = tokenizer.eos_token
-    # model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name)
-    # model.to(device)
+    print(f"Using device: {device}")
 
     train_dataset, val_dataset, test_dataset = generate_dataset(args.dataset_csv, args.entropy_model_name)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
     encoder_tokenizer = AutoTokenizer.from_pretrained(args.encoder_model_name)
-    encoder_model = AutoModel.from_pretrained(args.encoder_model_name)
+    encoder_model = AutoModel.from_pretrained(args.encoder_model_name).to(device)
     latent_dim = encoder_model.config.hidden_size
 
     model = ClassifierBackbone(
@@ -56,7 +52,7 @@ def train_and_test(args):
             handcrafted_features = handcrafted_features.to(device)
             labels = labels.to(device)
 
-            latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
+            latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(device)).last_hidden_state.mean(dim=1)
             latent_features = latent_features.to(device)
 
             optimizer.zero_grad()
@@ -85,15 +81,18 @@ def train_and_test(args):
             for handcrafted_features, texts, labels in val_loader:
                 handcrafted_features = handcrafted_features.to(device)
                 labels = labels.to(device)
-                latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
+                latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(device)).last_hidden_state.mean(dim=1)
                 latent_features = latent_features.to(device)
                 logits = model(handcrafted_features, latent_features)
                 loss = criterion(logits, labels)
                 val_loss += loss.item() * handcrafted_features.size(0)
 
                 predictions = torch.argmax(logits, dim=1)
+                print(f"Predictions: {predictions}")
+                print(f"Labels: {labels}")
                 correct += (predictions == labels).sum().item()
                 total += labels.size(0)
+                print(f"Correct: {correct}, Total: {total}")
 
         val_loss /= len(val_dataset)
         accuracy = correct / total
@@ -120,7 +119,7 @@ def train_and_test(args):
         for handcrafted_features, texts, labels in test_loader:
             handcrafted_features = handcrafted_features.to(device)
             labels = labels.to(device)
-            latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True)).last_hidden_state.mean(dim=1)
+            latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(device)).last_hidden_state.mean(dim=1)
             latent_features = latent_features.to(device)
             logits = model(handcrafted_features, latent_features)
             loss = criterion(logits, labels)
@@ -152,11 +151,11 @@ def main():
     parser.add_argument("--encoder_model_name", type=str, default="roberta-base", help="Pretrained encoder model name")
     parser.add_argument("--hidden_dim", type=int, default=128, help="Hidden dimension for classifier backbone")
     parser.add_argument("--output_dim", type=int, default=2, help="Number of output classes")
-    parser.add_argument("--dropout", type=float, default=0.1, help="Dropout rate")
-    parser.add_argument("--nhead", type=int, default=2, help="Number of attention heads")
-    parser.add_argument("--num_layers", type=int, default=2, help="Number of layers in the transformer")
+    parser.add_argument("--dropout", type=float, default=0, help="Dropout rate")
+    parser.add_argument("--nhead", type=int, default=4, help="Number of attention heads")
+    parser.add_argument("--num_layers", type=int, default=10, help="Number of layers in the transformer")
     parser.add_argument("--dim_feedforward", type=int, default=256, help="Dimension of the feedforward network")
-    parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
+    parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
     parser.add_argument("--epochs", type=int, default=10, help="Number of training epochs")
     parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--step_size", type=int, default=5, help="Step size for the LR scheduler")
