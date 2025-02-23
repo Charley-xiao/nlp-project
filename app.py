@@ -44,6 +44,7 @@ def load_models(_args):
 
     encoder_tokenizer = AutoTokenizer.from_pretrained(args.encoder_model_name)
     encoder_model = AutoModel.from_pretrained(args.encoder_model_name)
+    encoder_model.eval()
     latent_dim = encoder_model.config.hidden_size
 
     classifier = ClassifierBackbone(
@@ -60,6 +61,7 @@ def load_models(_args):
     classifier.eval()
 
     entropy_model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name)
+    entropy_model.eval()
     entropy_tokenizer = AutoTokenizer.from_pretrained(args.entropy_model_name)
 
     return encoder_tokenizer, encoder_model, classifier, entropy_tokenizer, entropy_model
@@ -76,18 +78,20 @@ with classifier_tab:
         else:
             with st.spinner('Classifying text...'):
                 try:
-                    handcrafted_features = text_to_handcrafted_features(input_text, entropy_tokenizer, entropy_model)
-                    handcrafted_features = torch.tensor(np.float32(handcrafted_features)).unsqueeze(0)
-                    latent_features = encoder_model(
-                        **encoder_tokenizer(input_text, return_tensors="pt", padding=True, truncation=True)
-                    ).last_hidden_state.mean(dim=1)
+                    with torch.no_grad():
+                        handcrafted_features = text_to_handcrafted_features(input_text, entropy_tokenizer, entropy_model)
+                        handcrafted_features = torch.tensor(np.float32(handcrafted_features)).unsqueeze(0)
+                        latent_features = encoder_model(
+                            **encoder_tokenizer(input_text, return_tensors="pt", padding=True, truncation=True)
+                        ).last_hidden_state.mean(dim=1)
                 except IndexError:
                     st.error("The text is too short to classify. Please try a longer text.")
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
 
                 try:
-                    logits = classifier(handcrafted_features, latent_features)
+                    with torch.no_grad():
+                        logits = classifier(handcrafted_features, latent_features)
                     prediction = torch.argmax(logits, dim=1).item()
                     prob = torch.softmax(logits, dim=1).max().item() * 100
 

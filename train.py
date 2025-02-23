@@ -27,6 +27,7 @@ def train_and_test(args):
 
     encoder_tokenizer = AutoTokenizer.from_pretrained(args.encoder_model_name)
     encoder_model = AutoModel.from_pretrained(args.encoder_model_name).to(device)
+    encoder_model.eval()
     latent_dim = encoder_model.config.hidden_size
 
     model = ClassifierBackbone(
@@ -55,7 +56,8 @@ def train_and_test(args):
             handcrafted_features = handcrafted_features.to(device)
             labels = labels.to(device)
 
-            latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(device)).last_hidden_state.mean(dim=1)
+            with torch.no_grad():
+                latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(device)).last_hidden_state.mean(dim=1)
             latent_features = latent_features.to(device)
 
             optimizer.zero_grad()
