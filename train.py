@@ -19,6 +19,9 @@ def train_and_test(args):
     print(f"Using device: {device}")
 
     train_dataset, val_dataset, test_dataset = generate_dataset(args.dataset_csv, args.entropy_model_name)
+    contained_classes = set([label for _, _, label in train_dataset])
+    if len(contained_classes) < args.output_dim:
+        raise ValueError(f"Train dataset does not contain all classes. Found {len(contained_classes)} class(es), including {contained_classes}, expected {args.output_dim}.")
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
@@ -88,11 +91,8 @@ def train_and_test(args):
                 val_loss += loss.item() * handcrafted_features.size(0)
 
                 predictions = torch.argmax(logits, dim=1)
-                print(f"Predictions: {predictions}")
-                print(f"Labels: {labels}")
                 correct += (predictions == labels).sum().item()
                 total += labels.size(0)
-                print(f"Correct: {correct}, Total: {total}")
 
         val_loss /= len(val_dataset)
         accuracy = correct / total
