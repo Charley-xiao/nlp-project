@@ -1,5 +1,6 @@
 <div align="center">
-  <h1>VeriScribbi: The Text Authenticator</h1>
+  <!--<h1>VeriScribbi: The Text Authenticator</h1>-->
+  <img src="./assets/preview.png" alt="VeriScribbi Logo" width="90%">
   <p>A simple solution to distinguish human-written text from machine-generated content.</p>
   <p>Project for CS310 NLP, Spring 2025 at SUSTech</p>
 
