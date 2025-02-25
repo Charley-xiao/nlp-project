@@ -139,6 +139,25 @@ with classifier_tab:
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
 
+    # Giscus comment box
+    st.markdown("""
+    <script src="https://giscus.app/client.js"
+            data-repo="Charley-xiao/nlp-project"
+            data-repo-id="R_kgDON8F_GA"
+            data-category="Announcements"
+            data-category-id="DIC_kwDON8F_GM4CnP_5"
+            data-mapping="pathname"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="bottom"
+            data-theme="preferred_color_scheme"
+            data-lang="en"
+            crossorigin="anonymous"
+            async>
+    </script>
+    """, unsafe_allow_html=True)
+
 with report_tab:
     st.header("Report")
     with open(args.report_path, "r") as file:
