@@ -8,6 +8,7 @@ import numpy as np
 from tqdm import tqdm, trange
 import os
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import json
 
 from model import ClassifierBackbone 
 from utils.gen_dataset import TextClassificationDataset, generate_dataset
@@ -48,6 +49,15 @@ def train_and_test(args):
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
 
+    epoch_losses = {
+        "train": [],
+        "val": []
+    }
+    roc_curve = {
+        "TPR": [],
+        "FPR": []
+    }
+
     for epoch in trange(1, args.epochs + 1):
         model.train()
         running_loss = 0.0
@@ -76,11 +86,14 @@ def train_and_test(args):
         scheduler.step()
         epoch_loss = running_loss / len(train_dataset)
         print(f"Epoch [{epoch}/{args.epochs}], Training Loss: {epoch_loss:.4f}")
+        epoch_losses["train"].append(epoch_loss)
 
         model.eval()
         val_loss = 0.0
         correct = 0
         total = 0
+        running_tpr = 0.0
+        running_fpr = 0.0
 
         with torch.no_grad():
             for handcrafted_features, texts, labels in val_loader:
@@ -96,9 +109,23 @@ def train_and_test(args):
                 correct += (predictions == labels).sum().item()
                 total += labels.size(0)
 
+                true_positives = ((predictions == 1) & (labels == 1)).sum().item()
+                false_positives = ((predictions == 1) & (labels == 0)).sum().item()
+                false_negatives = ((predictions == 0) & (labels == 1)).sum().item()
+                true_negatives = ((predictions == 0) & (labels == 0)).sum().item()
+
+                running_tpr += true_positives / (true_positives + false_negatives)
+                running_fpr += false_positives / (false_positives + true_negatives)
+
         val_loss /= len(val_dataset)
+        running_fpr /= len(val_dataset)
+        running_tpr /= len(val_dataset)
         accuracy = correct / total
-        print(f"Epoch [{epoch}/{args.epochs}], Validation Loss: {val_loss:.4f}, Accuracy: {accuracy:.4f}")
+        print(f"Epoch [{epoch}/{args.epochs}], Validation Loss: {val_loss:.4f}, Accuracy: {accuracy:.4f}, " + \
+              f"TPR: {running_tpr:.4f}, FPR: {running_fpr}:.4f")
+        epoch_losses["val"].append(val_loss)
+        roc_curve["TPR"].append(running_tpr)
+        roc_curve["FPR"].append(running_fpr)
 
         if epoch % args.save_interval == 0:
             checkpoint_path = f"checkpoints/{args.checkpoint_prefix}_epoch{epoch}.pt"
@@ -110,6 +137,13 @@ def train_and_test(args):
 
     torch.save(model.state_dict(), f"checkpoints/classifier.pt")
     print("Training complete. Model saved.")
+    if not os.path.exists('results'):
+        os.makedirs('results')
+    with open('results/epoch_losses.json', 'w') as f:
+        json.dump(epoch_losses, f)
+    with open('results/roc_curve.json', 'w') as f:
+        json.dump(roc_curve, f)
+    print("Epoch losses and ROC curve saved to results/")
 
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
     model.eval()

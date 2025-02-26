@@ -68,6 +68,12 @@ To train and evaluate the model, run:
 python train.py
 ```
 
+To visualize the results, run:
+
+```bash
+python utils/visualize.py
+```
+
 *Note*: The current training script uses an early version of the text encoder in our architecture. We recommend reviewing and updating the validation accuracy metrics and considering an upgrade from `roberta-base` to a more advanced model for enhanced performance. Detailed training logs and configuration options will be documented in the [report](./assets/report.md).
 
 ---
