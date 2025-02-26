@@ -92,8 +92,8 @@ def train_and_test(args):
         val_loss = 0.0
         correct = 0
         total = 0
-        running_tpr = 0.0
-        running_fpr = 0.0
+        running_tpr = []
+        running_fpr = []
 
         with torch.no_grad():
             for handcrafted_features, texts, labels in val_loader:
@@ -114,18 +114,18 @@ def train_and_test(args):
                 false_negatives = ((predictions == 0) & (labels == 1)).sum().item()
                 true_negatives = ((predictions == 0) & (labels == 0)).sum().item()
 
-                running_tpr += true_positives / (true_positives + false_negatives)
-                running_fpr += false_positives / (false_positives + true_negatives)
+                running_tpr.append(true_positives / (true_positives + false_negatives))
+                running_fpr.append(false_positives / (false_positives + true_negatives))
 
         val_loss /= len(val_dataset)
-        running_fpr /= len(val_dataset)
-        running_tpr /= len(val_dataset)
+        epoch_fpr = np.mean(running_fpr)
+        epoch_tpr = np.mean(running_tpr)
         accuracy = correct / total
         print(f"Epoch [{epoch}/{args.epochs}], Validation Loss: {val_loss:.4f}, Accuracy: {accuracy:.4f}, " + \
-              f"TPR: {running_tpr:.4f}, FPR: {running_fpr}:.4f")
+              f"TPR: {epoch_tpr:.4f}, FPR: {epoch_fpr}:.4f")
         epoch_losses["val"].append(val_loss)
-        roc_curve["TPR"].append(running_tpr)
-        roc_curve["FPR"].append(running_fpr)
+        roc_curve["TPR"].append(epoch_tpr)
+        roc_curve["FPR"].append(epoch_fpr)
 
         if epoch % args.save_interval == 0:
             checkpoint_path = f"checkpoints/{args.checkpoint_prefix}_epoch{epoch}.pt"
