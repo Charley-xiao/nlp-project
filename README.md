@@ -86,11 +86,21 @@ Stay tuned!
 
 ## Humanization
 
+<div align="center">
+  <img src="./assets/grpo_visual.png" alt="GRPO" width="80%">
+  <p>
+    Figure source:
+    <a href="https://huggingface.co/docs/trl/main/en/grpo_trainer">
+      GRPO Trainer, Huggingface
+    </a>
+  </p>
+</div>
+
 As one of many applications of our classification model, it can act as a reward model when humanizing a large language model.
 
 For demonstration, we used *Group Relative Policy Optimization* (GRPO) to humanize the Qwen2.5-0.5B-Instruct model.
 
-The results are shown in the [report](./assets/report.md). To reproduce, run:
+The results are shown in the [report](./assets/report.md). To reproduce the finetuning process, run:
 
 ```bash
 pip install trl
