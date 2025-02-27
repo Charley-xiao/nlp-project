@@ -183,7 +183,7 @@ def main():
     parser = argparse.ArgumentParser(description="Train binary classifier for human vs machine text")
     parser.add_argument("--dataset_csv", type=str, default="data/preprocessed.csv", help="Path to training CSV file")
     parser.add_argument("--handcrafted_dim", type=int, default=21, help="Dimension of handcrafted features")
-    parser.add_argument("--entropy_model_name", type=str, default="Qwen/Qwen2.5-0.5B-Instruct", help="Pretrained entropy model name")
+    parser.add_argument("--entropy_model_name", type=str, default="gpt2", help="Pretrained entropy model name")
     parser.add_argument("--encoder_model_name", type=str, default="roberta-base", help="Pretrained encoder model name")
     parser.add_argument("--hidden_dim", type=int, default=128, help="Hidden dimension for classifier backbone")
     parser.add_argument("--output_dim", type=int, default=2, help="Number of output classes")
