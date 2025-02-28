@@ -128,7 +128,7 @@ def train_and_test(args):
         epoch_tpr = np.mean(running_tpr)
         accuracy = correct / total
         print(f"Epoch [{epoch}/{args.epochs}], Validation Loss: {val_loss:.4f}, Accuracy: {accuracy:.4f}, " + \
-              f"TPR: {epoch_tpr:.4f}, FPR: {epoch_fpr}:.4f")
+              f"TPR: {epoch_tpr:.4f}, FPR: {epoch_fpr:.4f}")
         epoch_losses["val"].append(val_loss)
         roc_curve["TPR"].append(epoch_tpr)
         roc_curve["FPR"].append(epoch_fpr)
