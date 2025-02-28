@@ -57,7 +57,11 @@ def load_models(_args):
         num_layers=args.num_layers,
         dim_feedforward=args.dim_feedforward
     )
-    classifier.load_state_dict(torch.load(args.classifier_path, weights_only=True))
+    if not torch.cuda.is_available():
+        print("CUDA is not available. Loading model on CPU.")
+        classifier.load_state_dict(torch.load(args.classifier_path, weights_only=True, map_location=torch.device('cpu')))
+    else:
+        classifier.load_state_dict(torch.load(args.classifier_path, weights_only=True))
     classifier.eval()
 
     entropy_model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name)
