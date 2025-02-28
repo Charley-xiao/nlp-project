@@ -1,5 +1,6 @@
 <div align="center">
-  <h1>VeriScribbi: The Text Authenticator</h1>
+  <!--<h1>VeriScribbi: The Text Authenticator</h1>-->
+  <img src="./assets/preview.png" alt="VeriScribbi Logo" width="90%">
   <p>A simple solution to distinguish human-written text from machine-generated content.</p>
   <p>Project for CS310 NLP, Spring 2025 at SUSTech</p>
 
@@ -11,7 +12,6 @@
 
 > **Note:** *Improvements are in progress for `train.py` – in particular, updating the validation accuracy computation and replacing `roberta-base` with a more recent model. The Streamlit interface continues to evolve for optimal user experience.*
 
----
 
 ## Overview
 
@@ -23,7 +23,6 @@
 
 We have also released a [web application](https://ai-detect.streamlit.app/) to demonstrate the model’s real-time classification capabilities. Pre-trained model checkpoints are available [here](TODO) for further experimentation.
 
----
 
 ## Datasets
 
@@ -37,7 +36,6 @@ For comprehensive training and evaluation, we combined two diverse datasets:
 
 *Additional details and statistical analyses of these datasets will be updated soon.*
 
----
 
 ## Setup
 
@@ -57,7 +55,6 @@ Follow these steps to set up your development environment:
   ```
   The preprocessing script combines and cleans the datasets, saving the final data in the `data/` directory.
 
----
 
 ## Training & Testing
 
@@ -67,9 +64,13 @@ To train and evaluate the model, run:
 python train.py
 ```
 
-*Note*: The current training script uses an early version of the text encoder in our architecture. We recommend reviewing and updating the validation accuracy metrics and considering an upgrade from `roberta-base` to a more advanced model for enhanced performance. Detailed training logs and configuration options will be documented in the [report](./assets/report.md).
+To visualize the results, run:
 
----
+```bash
+python utils/visualize.py
+```
+
+*Note*: The current training script uses an early version of the text encoder in our architecture. We recommend reviewing and updating the validation accuracy metrics and considering an upgrade from `roberta-base` to a more advanced model for enhanced performance. Detailed training logs and configuration options will be documented in the [report](./assets/report.md).
 
 ## Deployment
 
@@ -79,13 +80,32 @@ Our intuitive Streamlit web app demonstrates VeriScribbi’s real-time classific
 streamlit run app.py
 ```
 
----
-
 ## Results
 
 Stay tuned!
 
----
+## Humanization
+
+<div align="center">
+  <img src="./assets/grpo_visual.png" alt="GRPO" width="80%">
+  <p>
+    Figure source:
+    <a href="https://huggingface.co/docs/trl/main/en/grpo_trainer">
+      GRPO Trainer, Huggingface
+    </a>
+  </p>
+</div>
+
+As one of many applications of our classification model, it can act as a reward model when humanizing a large language model.
+
+For demonstration, we used *Group Relative Policy Optimization* (GRPO) to humanize the Qwen2.5-0.5B-Instruct model.
+
+The results are shown in the [report](./assets/report.md). To reproduce the finetuning process, run:
+
+```bash
+pip install trl
+python humanize.py
+```
 
 ## Contributors
 
@@ -94,8 +114,6 @@ Stay tuned!
 </a>
 
 Contributions, suggestions, and collaborations are highly welcomed!
-
----
 
 ## License
 

@@ -17,13 +17,13 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument("--classifier_path", type=str, default="checkpoints/classifier.pt", help="Path to classifier checkpoint")
 argparser.add_argument("--report_path", type=str, default="assets/report.md", help="Path to report markdown file")
 argparser.add_argument("--handcrafted_dim", type=int, default=21, help="Dimension of handcrafted features")
-argparser.add_argument("--entropy_model_name", type=str, default="Qwen/Qwen2.5-0.5B-Instruct", help="Pretrained entropy model name")
+argparser.add_argument("--entropy_model_name", type=str, default="gpt2", help="Pretrained entropy model name")
 argparser.add_argument("--encoder_model_name", type=str, default="roberta-base", help="Pretrained encoder model name")
 argparser.add_argument("--hidden_dim", type=int, default=128, help="Hidden dimension for classifier backbone")
 argparser.add_argument("--output_dim", type=int, default=2, help="Number of output classes")
-argparser.add_argument("--dropout", type=float, default=0.1, help="Dropout rate")
-argparser.add_argument("--nhead", type=int, default=2, help="Number of attention heads")
-argparser.add_argument("--num_layers", type=int, default=2, help="Number of layers in the transformer")
+argparser.add_argument("--dropout", type=float, default=0, help="Dropout rate")
+argparser.add_argument("--nhead", type=int, default=4, help="Number of attention heads")
+argparser.add_argument("--num_layers", type=int, default=10, help="Number of layers in the transformer")
 argparser.add_argument("--dim_feedforward", type=int, default=256, help="Dimension of the feedforward network")
 argparser.add_argument("--model_version", type=str, default="v0.1", help="Model version")
 args = argparser.parse_args()
@@ -44,6 +44,7 @@ def load_models(_args):
 
     encoder_tokenizer = AutoTokenizer.from_pretrained(args.encoder_model_name)
     encoder_model = AutoModel.from_pretrained(args.encoder_model_name)
+    encoder_model.eval()
     latent_dim = encoder_model.config.hidden_size
 
     classifier = ClassifierBackbone(
@@ -60,7 +61,9 @@ def load_models(_args):
     classifier.eval()
 
     entropy_model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name)
+    entropy_model.eval()
     entropy_tokenizer = AutoTokenizer.from_pretrained(args.entropy_model_name)
+    entropy_tokenizer.pad_token = entropy_tokenizer.eos_token
 
     return encoder_tokenizer, encoder_model, classifier, entropy_tokenizer, entropy_model
 
@@ -76,18 +79,24 @@ with classifier_tab:
         else:
             with st.spinner('Classifying text...'):
                 try:
-                    handcrafted_features = text_to_handcrafted_features(input_text, entropy_tokenizer, entropy_model)
-                    handcrafted_features = torch.tensor(np.float32(handcrafted_features)).unsqueeze(0)
-                    latent_features = encoder_model(
-                        **encoder_tokenizer(input_text, return_tensors="pt", padding=True, truncation=True)
-                    ).last_hidden_state.mean(dim=1)
+                    with torch.no_grad():
+                        handcrafted_features = text_to_handcrafted_features(input_text, entropy_tokenizer, entropy_model)
+                        handcrafted_features = torch.tensor(np.float32(handcrafted_features)).unsqueeze(0)
+                        latent_features = encoder_model(
+                            **encoder_tokenizer(input_text, return_tensors="pt", padding=True, truncation=True)
+                        ).last_hidden_state.mean(dim=1)
                 except IndexError:
                     st.error("The text is too short to classify. Please try a longer text.")
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
 
+
+                if len(input_text) < 100:
+                    st.warning("The text is short, which may affect the classification result.")
+
                 try:
-                    logits = classifier(handcrafted_features, latent_features)
+                    with torch.no_grad():
+                        logits = classifier(handcrafted_features, latent_features)
                     prediction = torch.argmax(logits, dim=1).item()
                     prob = torch.softmax(logits, dim=1).max().item() * 100
 
@@ -134,6 +143,25 @@ with classifier_tab:
 
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
+
+    # Giscus comment box
+    st.markdown("""
+    <script src="https://giscus.app/client.js"
+            data-repo="Charley-xiao/nlp-project"
+            data-repo-id="R_kgDON8F_GA"
+            data-category="Announcements"
+            data-category-id="DIC_kwDON8F_GM4CnP_5"
+            data-mapping="pathname"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="bottom"
+            data-theme="preferred_color_scheme"
+            data-lang="en"
+            crossorigin="anonymous"
+            async>
+    </script>
+    """, unsafe_allow_html=True)
 
 with report_tab:
     st.header("Report")

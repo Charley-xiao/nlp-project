@@ -71,33 +71,35 @@ def generate_dataset(csv_file, model_name, num_fft_features=10):
             df = pd.read_csv(csv_file)
             tokenizer = AutoTokenizer.from_pretrained(model_name)
             model = AutoModelForCausalLM.from_pretrained(model_name)
+            model.eval()
             tokenizer.pad_token = tokenizer.eos_token
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             print(f"Device: {device}")
             model.to(device)
             # For each text, calculate handcrafted features
             print("Calculating handcrafted features... Total rows:", len(df))
-            for _, row in tqdm(df.iterrows()):
-                text = row['text']
-                try:
-                    handcrafted_features = text_to_handcrafted_features(text, tokenizer, model, num_fft_features)
-                except Exception as e:
-                    print(f"Error: {e}")
-                    print(f"Text: {text}")
-                    continue
-                label = row['generated']
-                dataset.append((handcrafted_features, text, label))
-                # Save dataset every 1000 rows
-                if len(dataset) % 1000 == 0:
+            with torch.no_grad():
+                for _, row in tqdm(df.iterrows()):
+                    text = row['text']
                     try:
-                        # Remove previous cache files
-                        for file in os.listdir('cache'):
-                            if file.startswith('temp_') and file.endswith('.pkl'):
-                                os.remove(os.path.join('cache', file))
+                        handcrafted_features = text_to_handcrafted_features(text, tokenizer, model, num_fft_features)
                     except Exception as e:
-                        print(f"Error removing cache files: {e}")
-                    with open(f'cache/temp_{len(dataset)}.pkl', 'wb') as f:
-                        pickle.dump(dataset, f)
+                        print(f"Error: {e}")
+                        print(f"Text: {text}")
+                        continue
+                    label = row['generated']
+                    dataset.append((handcrafted_features, text, label))
+                    # Save dataset every 1000 rows
+                    if len(dataset) % 1000 == 0:
+                        try:
+                            # Remove previous cache files
+                            for file in os.listdir('cache'):
+                                if file.startswith('temp_') and file.endswith('.pkl'):
+                                    os.remove(os.path.join('cache', file))
+                        except Exception as e:
+                            print(f"Error removing cache files: {e}")
+                        with open(f'cache/temp_{len(dataset)}.pkl', 'wb') as f:
+                            pickle.dump(dataset, f)
         random.shuffle(dataset)
         # Split dataset into train, validation, and test sets
         train_size = int(0.8 * len(dataset))
