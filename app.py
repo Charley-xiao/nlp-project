@@ -63,6 +63,7 @@ def load_models(_args):
     entropy_model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name)
     entropy_model.eval()
     entropy_tokenizer = AutoTokenizer.from_pretrained(args.entropy_model_name)
+    entropy_tokenizer.pad_token = entropy_tokenizer.eos_token
 
     return encoder_tokenizer, encoder_model, classifier, entropy_tokenizer, entropy_model
 
@@ -88,6 +89,10 @@ with classifier_tab:
                     st.error("The text is too short to classify. Please try a longer text.")
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
+
+
+                if len(input_text) < 100:
+                    st.warning("The text is short, which may affect the classification result.")
 
                 try:
                     with torch.no_grad():

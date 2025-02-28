@@ -45,6 +45,12 @@ def train_and_test(args):
     print(model)
     print(f"Number of parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
 
+    if args.resume_from is not None:
+        model.load_state_dict(torch.load(args.resume_from))
+        print(f"Resumed training from {args.resume_from}")
+        args.learning_rate /= 10
+        print(f"Reduced learning rate to {args.learning_rate}")
+
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=args.step_size, gamma=args.gamma)
@@ -200,6 +206,7 @@ def main():
     parser.add_argument("--log_interval", type=int, default=10, help="Log training status every N steps")
     parser.add_argument("--save_interval", type=int, default=5, help="Save a checkpoint every N epochs")
     parser.add_argument("--checkpoint_prefix", type=str, default="classifier_checkpoint", help="Prefix for checkpoint filenames")
+    parser.add_argument("--resume_from", type=str, default=None, help="Path to checkpoint to resume training")
     args = parser.parse_args()
     train_and_test(args)
 
