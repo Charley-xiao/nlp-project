@@ -104,7 +104,7 @@ The results are shown in the [report](./assets/report.md). To reproduce the fine
 
 ```bash
 pip install trl
-python humanize.py
+accelerate launch humanize.py
 ```
 
 ## Contributors

@@ -5,6 +5,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModel
 import torch
 import os
 import argparse
+import numpy as np
 
 from utils.gen_dataset import text_to_handcrafted_features
 
@@ -41,11 +42,12 @@ def load_models(args):
         num_layers=args.num_layers,
         dim_feedforward=args.dim_feedforward
     ).to(device)
-    classifier.load_state_dict(torch.load(args.classifier_path, map_location=device))
+    classifier.load_state_dict(torch.load(args.classifier_path, map_location=device, weights_only=True))
     classifier.eval()
     entropy_model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name).to(device)
     entropy_model.eval()
     entropy_tokenizer = AutoTokenizer.from_pretrained(args.entropy_model_name)
+    entropy_tokenizer.pad_token = entropy_tokenizer.eos_token
 
     return encoder_tokenizer, encoder_model, classifier, entropy_tokenizer, entropy_model
 
@@ -57,22 +59,21 @@ def predict(text: str) -> int:
     Runs the text through the classifier backbone (handcrafted + latent features).
     Returns 0 for "human-like" or 1 for "AI-like" class.
     """
-    handcrafted_features = text_to_handcrafted_features(text)
-    handcrafted_features = torch.tensor(handcrafted_features).unsqueeze(0).to(device)
+    handcrafted_features = text_to_handcrafted_features(text, entropy_tokenizer, entropy_model)
+    handcrafted_features = torch.tensor(np.float32(handcrafted_features)).unsqueeze(0).to(device)
     tokenized_inputs = encoder_tokenizer([text], return_tensors="pt", padding=True, truncation=True).to(device)
     latent_features = encoder_model(**tokenized_inputs).last_hidden_state.mean(dim=1).to(device)
     logits = classifier(handcrafted_features, latent_features)
     prediction = torch.argmax(logits, dim=1).item()
     return prediction
 
-def calc_reward(text: str) -> float:
-    """
-    Converts classifier prediction (0 or 1) into reward.
-    Here, if the classifier says 'human-like' = 0 => reward=1,
-    if 'AI-like' = 1 => reward=0.
-    """
-    prediction = predict(text)
-    return 1 - prediction  # (If AI-like => 0, if human-like => 1)
+def calc_reward(prompts, completions, **kwargs):
+    rewards = []
+    for prompt, completion in zip(prompts, completions):
+        text = prompt + completion
+        is_ai = predict(text)
+        rewards.append(1 - is_ai)
+    return rewards
 
 def split_text_into_prompt_and_completion(example):
     """
@@ -83,6 +84,8 @@ def split_text_into_prompt_and_completion(example):
     title = example["title"]
     full_text = example["text"]
 
+    if not full_text:
+        return {"prompt": "", "completion": ""}
     paragraphs = full_text.split("\n\n")
     if len(paragraphs) <= 1:
         first_paragraph = full_text.strip()
@@ -121,8 +124,6 @@ trainer = GRPOTrainer(
     model="Qwen/Qwen2.5-0.5B-Instruct",
     reward_funcs=calc_reward,
     args=training_args,
-    train_dataset=dataset,
-    prompt_column="prompt",
-    response_column="completion",
+    train_dataset=dataset
 )
 trainer.train()
