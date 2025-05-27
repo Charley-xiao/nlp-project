@@ -46,17 +46,26 @@ def test(args):
         for file in tqdm(claude_files, desc="Processing Claude files"):
             with open(file, 'r', encoding='utf-8') as f:
                 text = f.read().strip()
-                handcrafted_features = text_to_handcrafted_features(text, entropy_model, entropy_tokenizer, device)
+                if len(text) < 1:
+                    print(f"Skipping short text in {file}: {text}...")
+                    continue
+                handcrafted_features = text_to_handcrafted_features(text, entropy_tokenizer, entropy_model)
                 test_dataset.append((handcrafted_features, text, 1))
         for file in tqdm(gpt_files, desc="Processing GPT files"):
             with open(file, 'r', encoding='utf-8') as f:
                 text = f.read().strip()
-                handcrafted_features = text_to_handcrafted_features(text, entropy_model, entropy_tokenizer, device)
+                if len(text) < 1:
+                    print(f"Skipping short text in {file}: {text}...")
+                    continue
+                handcrafted_features = text_to_handcrafted_features(text, entropy_tokenizer, entropy_model)
                 test_dataset.append((handcrafted_features, text, 1))
         for file in tqdm(human_files, desc="Processing Human files"):
             with open(file, 'r', encoding='utf-8') as f:
                 text = f.read().strip()
-                handcrafted_features = text_to_handcrafted_features(text, entropy_model, entropy_tokenizer, device)
+                if len(text) < 1:
+                    print(f"Skipping short text in {file}: {text}...")
+                    continue
+                handcrafted_features = text_to_handcrafted_features(text, entropy_tokenizer, entropy_model)
                 test_dataset.append((handcrafted_features, text, 0))
         print(f"Total test dataset size: {len(test_dataset)}")
         test_dataset = TextClassificationDataset(test_dataset)
@@ -86,7 +95,7 @@ def test(args):
     all_labels = []
 
     with torch.no_grad():
-        for handcrafted_features, texts, labels in test_loader:
+        for handcrafted_features, texts, labels in tqdm(test_loader):
             handcrafted_features = handcrafted_features.to(device)
             labels = labels.to(device)
             latent_features = encoder_model(**encoder_tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(device)).last_hidden_state.mean(dim=1)
@@ -122,7 +131,7 @@ def main():
     parser.add_argument("--dim_feedforward", type=int, default=256, help="Dimension of the feedforward network")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
     parser.add_argument("--test_checkpoint", type=str, default="checkpoints/classifier.pt", help="Path to classifier checkpoint for testing")
-    parser.add_argument("--test_data_path", type=str, default="data/test_data.json", help="Path to test data JSON file")
+    parser.add_argument("--test_data_path", type=str, default="data/ghostbuster-data", help="Path to test data JSON file")
     args = parser.parse_args()
     test(args)
 
