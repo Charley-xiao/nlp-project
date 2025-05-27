@@ -3,3 +3,5 @@
 /artem9k
 /cache
 /checkpoints/classifier_*.pt
+/data/ghostbuster-data
+ghostbuster-data.tar.gz
