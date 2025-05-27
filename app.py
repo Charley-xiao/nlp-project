@@ -14,7 +14,6 @@ from utils.gen_dataset import text_to_handcrafted_features
 torch.classes.__path__ = []
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument("--classifier_path", type=str, default="checkpoints/classifier.pt", help="Path to classifier checkpoint")
 argparser.add_argument("--report_path", type=str, default="assets/report.md", help="Path to report markdown file")
 argparser.add_argument("--handcrafted_dim", type=int, default=21, help="Dimension of handcrafted features")
 argparser.add_argument("--entropy_model_name", type=str, default="gpt2", help="Pretrained entropy model name")
@@ -33,7 +32,7 @@ st.title("VeriScribbi: Text Source Identifier")
 classifier_tab, report_tab = st.tabs(["Classifier", "Report"])
 
 @st.cache_resource
-def load_models(_args):
+def load_models():
     nltk.download('punkt_tab')
     nltk.download('averaged_perceptron_tagger_eng')
     try:
@@ -47,38 +46,48 @@ def load_models(_args):
     encoder_model.eval()
     latent_dim = encoder_model.config.hidden_size
 
-    classifier = ClassifierBackbone(
-        args.handcrafted_dim,
-        latent_dim,
-        hidden_dim=args.hidden_dim,
-        output_dim=args.output_dim,
-        dropout=args.dropout,
-        nhead=args.nhead,
-        num_layers=args.num_layers,
-        dim_feedforward=args.dim_feedforward
-    )
-    if not torch.cuda.is_available():
-        print("CUDA is not available. Loading model on CPU.")
-        classifier.load_state_dict(torch.load(args.classifier_path, weights_only=True, map_location=torch.device('cpu')))
-    else:
-        classifier.load_state_dict(torch.load(args.classifier_path, weights_only=True))
-    classifier.eval()
+    def _load_classifier(path):
+        clf = ClassifierBackbone(
+            args.handcrafted_dim,
+            latent_dim,
+            hidden_dim=args.hidden_dim,
+            output_dim=args.output_dim,
+            dropout=args.dropout,
+            nhead=args.nhead,
+            num_layers=args.num_layers,
+            dim_feedforward=args.dim_feedforward
+        )
+        if not torch.cuda.is_available():
+            clf.load_state_dict(torch.load(path, map_location=torch.device('cpu')))
+        else:
+            clf.load_state_dict(torch.load(path))
+        clf.eval()
+        return clf
+
+    models = {
+        "Model 1": _load_classifier("checkpoints/classifier.pt"),
+        "Model 2": _load_classifier("checkpoints/classifierghostbuster.pt")
+    }
 
     entropy_model = AutoModelForCausalLM.from_pretrained(args.entropy_model_name)
     entropy_model.eval()
     entropy_tokenizer = AutoTokenizer.from_pretrained(args.entropy_model_name)
     entropy_tokenizer.pad_token = entropy_tokenizer.eos_token
 
-    return encoder_tokenizer, encoder_model, classifier, entropy_tokenizer, entropy_model
+    return encoder_tokenizer, encoder_model, models, entropy_tokenizer, entropy_model
 
-encoder_tokenizer, encoder_model, classifier, entropy_tokenizer, entropy_model = load_models(args)
+encoder_tokenizer, encoder_model, classifiers, entropy_tokenizer, entropy_model = load_models()
 
 with classifier_tab:
     st.header("Distinguish Human vs. Machine Written Text")
+
+    model_choice = st.radio("Select classifier checkpoint:", list(classifiers.keys()))
+    classifier = classifiers[model_choice]
+
     input_text = st.text_area("Enter your text here:")
 
     if st.button("Classify"):
-        if input_text.strip() == "":
+        if not input_text.strip():
             st.warning("Please enter some text to classify.")
         else:
             with st.spinner('Classifying text...'):
@@ -94,7 +103,6 @@ with classifier_tab:
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
 
-
                 if len(input_text) < 100:
                     st.warning("The text is short, which may affect the classification result.")
 
@@ -108,43 +116,23 @@ with classifier_tab:
 
                     st.write("""
                     <style>
-                    .result-card {
-                        background-color: #F9F9F9;
-                        border-radius: 10px;
-                        padding: 20px;
-                        margin-top: 15px;
-                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                    }
-                    .result-label {
-                        font-size: 1.3rem;
-                        font-weight: bold;
-                        margin-bottom: 5px;
-                    }
-                    .result-prob {
-                        font-size: 1rem;
-                        color: #555;
-                    }
+                    .result-card { background-color: #F9F9F9; border-radius: 10px; padding: 20px; margin-top: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}  
+                    .result-label { font-size: 1.3rem; font-weight: bold; margin-bottom: 5px;}  
+                    .result-prob { font-size: 1rem; color: #555;}
                     </style>
                     """, unsafe_allow_html=True)
 
                     if prediction == 1:
-                        label_text = "🤖 Machine Generated"
-                        label_color = "#FF4B4B"
+                        label_text, label_color = "🤖 Machine Generated", "#FF4B4B"
                     else:
-                        label_text = "🙋 Human Written"
-                        label_color = "#2ECC71"
+                        label_text, label_color = "🙋 Human Written", "#2ECC71"
 
                     st.markdown(f"""
                     <div class="result-card">
-                        <div class="result-label" style="color: {label_color};">
-                            {label_text}
-                        </div>
-                        <div class="result-prob">
-                            Probability: {prob:.2f}%
-                        </div>
+                        <div class="result-label" style="color: {label_color};">{label_text}</div>
+                        <div class="result-prob">Probability: {prob:.2f}%</div>
                     </div>
                     """, unsafe_allow_html=True)
-
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
 
